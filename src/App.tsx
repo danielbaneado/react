@@ -1,51 +1,69 @@
-import hezbollahFlag from "./assets/hezbollah-38-1.webp"
-import talibanFlag from './assets/images.png'
-import ottomanFlag from './assets/Flag_of_Ottoman_Empire_(1517-1793).png'
-import './App.css'
-import { useState } from "react"
-import {type Country, countryNames } from "./data/countries"
+import { useEffect, useState } from "react"
+import { fetchMiddleEast, type Country } from "./data/countries"
 import CountryCard from "./components/CountryCard"
 import History from "./components/History"
 import Controls from "./components/Controls"
+import "./App.css"
+
+function useCountries(){
+  const [countries, setCountries] = useState<Country[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    fetchMiddleEast(controller.signal)
+      .then(data => {
+        setCountries(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        if (controller.signal.aborted) return
+        setError(err instanceof Error ? err.message : "Error desconocido")
+        setLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [])
+
+  return { countries, loading, error }
+}
 
 function App() {
-  const [displayedCountries, setDisplayedCountries]= useState<Country[]>([])
-  const lastCountry= displayedCountries.at(-1)
-  const remaining= countryNames.filter(c => !displayedCountries.includes(c))
+  const { countries, loading, error } = useCountries()
+  const [displayed, setDisplayed] = useState<Country[]>([])
 
-  function handleClick() {
-    if(remaining.length=== 0) return
-    const index= Math.floor(Math.random() * remaining.length)
-    const country= remaining[index]
-    setDisplayedCountries([...displayedCountries, country])
+  const lastCountry = displayed.at(-1)
+  const remaining = countries.filter(
+    c => !displayed.some(d => d.name === c.name)
+  )
+
+  function handleNext() {
+    if (remaining.length === 0) return
+    const index = Math.floor(Math.random() * remaining.length)
+    setDisplayed([...displayed, remaining[index]])
   }
 
-  function restart(){
-    setDisplayedCountries([])
+  function restart() {
+    setDisplayed([])
   }
+
+  if (loading) return <p>Cargando países...</p>
+  if (error) return <p>Error: {error}</p>
 
   return (
     <>
       <section id="center">
-        <div className="hero">
-          <img src={hezbollahFlag} className="base" height="120" alt="Hezbollah flag" />
-          <img src={talibanFlag} className="base" height="120" alt="Taliban flag" />
-          <img src={ottomanFlag} className="base" height="120" alt="Ottoman empire peak" />
-        </div>
-        <div>
-          <h1>Country test</h1>
-        </div>
         <Controls
-          onNext={handleClick}
+          onNext={handleNext}
           onRestart={restart}
           disabled={remaining.length === 0}
         />
-        {lastCountry && (
-          <CountryCard country={lastCountry} />
-        )}
-        <History countries={displayedCountries} title="Países vistos" />
+        {lastCountry && <CountryCard country={lastCountry} />}
+        <History countries={displayed} title="Países vistos" />
       </section>
-      <h3>Clicks: {displayedCountries.length}</h3>
+      <h3>Países vistos: {displayed.length}</h3>
     </>
   )
 }

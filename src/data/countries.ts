@@ -1,31 +1,56 @@
-import KSA from "../assets/KSA.svg"
-import Bahrain from "../assets/Bahrain.png"
-import Egypt from "../assets/Egypt.png"
-import Iraq from "../assets/Iraq.webp"
-import Israel from "../assets/Israel.png"
-import Iran from "../assets/Iran.webp"
-import Kuwait from "../assets/Kuwait.webp"
-import Lebanon from "../assets/Lebanon.webp"
-import Qatar from "../assets/Qatar.webp"
-import Oman from "../assets/Oman.png"
-import Syria from "../assets/Syria.webp"
-import Turkey from "../assets/Turkiye.webp"
-import UAE from "../assets/UAE.webp"
-
-export const middleEast= {
-  Bahrain, 
-  Egypt, 
-  Iraq, 
-  Iran, 
-  Israel, 
-  Kuwait, 
-  Lebanon, 
-  Qatar, 
-  Oman, 
-  "Saudi Arabia": KSA, 
-  Syria, 
-  Turkey, 
-  "United Arab Emirates": UAE
+export interface Country {
+  name: string;
+  flag: string;
 }
-export type Country = keyof typeof middleEast
-export const countryNames= Object.keys(middleEast) as Country[]
+
+interface ApiCountry {
+  names: { common: string };
+  codes: { alpha_2: string };
+  flag: { url_png: string };
+}
+
+interface ApiResponse {
+  data: { objects: ApiCountry[] };
+}
+
+const API_URL= "https://api.restcountries.com/countries/v5"
+const API_KEY= import.meta.env.VITE_RC_API_KEY as string
+
+export const MIDDLE_EAST_CODES = [
+  "BH", "EG", "IQ", "IR", "IL", "KW", "LB", "QA", "OM", "SA", "SY", "TR", "AE",
+]
+
+async function fetchPage(offset: number, signal?: AbortSignal): Promise<ApiCountry[]> {
+  const params = new URLSearchParams({
+    limit: "100",
+    offset: String(offset),
+    response_fields: "names.common,codes.alpha_2,flag.url_png",
+  })
+
+  const res = await fetch(`${API_URL}?${params}`, {
+    headers: { Authorization: `Bearer ${API_KEY}` },
+    signal,
+  })
+
+  if (!res.ok) {
+    throw new Error(`La API respondió con error ${res.status}`)
+  }
+
+  const json: ApiResponse = await res.json()
+  return json.data.objects
+}
+
+export async function fetchMiddleEast(signal?: AbortSignal): Promise<Country[]> {
+  if (!API_KEY) {
+    throw new Error("Falta VITE_RC_API_KEY en .env.local")
+  }
+
+  const pages = await Promise.all(
+    [0, 100, 200].map(offset => fetchPage(offset, signal))
+  )
+
+  return pages
+    .flat()
+    .filter(c => MIDDLE_EAST_CODES.includes(c.codes.alpha_2))
+    .map(c => ({ name: c.names.common, flag: c.flag.url_png }))
+}

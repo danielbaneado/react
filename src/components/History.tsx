@@ -13,7 +13,7 @@ export default function History({ countries, title }: HistoryProps) {
       {title && <h3>{title}</h3>}
       <ul>
         {countries.map(country => (
-          <li key={country}>{country}</li>
+          <li key={country.name}>{country.name}</li>
         ))}
       </ul>
     </>
