@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react"
-import { fetchMiddleEast, type Country } from "./data/countries"
+import { fetchCountries, type Country } from "./data/countries"
 import CountryCard from "./components/CountryCard"
-import History from "./components/History"
 import Controls from "./components/Controls"
 import "./App.css"
 
-function useCountries(){
+function useCountries(continent?: string){
   const [countries, setCountries] = useState<Country[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -13,7 +12,7 @@ function useCountries(){
   useEffect(() => {
     const controller = new AbortController()
 
-    fetchMiddleEast(controller.signal)
+    fetchCountries(controller.signal, continent)
       .then(data => {
         setCountries(data)
         setLoading(false)
@@ -25,13 +24,14 @@ function useCountries(){
       })
 
     return () => controller.abort()
-  }, [])
+  }, [continent])
 
   return { countries, loading, error }
 }
 
 function App() {
-  const { countries, loading, error } = useCountries()
+  const [continent, setContinent] = useState<string>("Oceania")
+  const { countries, loading, error } = useCountries(continent)
   const [displayed, setDisplayed] = useState<Country[]>([])
 
   const lastCountry = displayed.at(-1)
@@ -49,19 +49,25 @@ function App() {
     setDisplayed([])
   }
 
+  function handleContinentChange(continent: string){
+    setContinent(continent)
+    restart()
+  }
+
   if (loading) return <p>Cargando países...</p>
   if (error) return <p>Error: {error}</p>
 
   return (
     <>
-      <section id="center">
-        <Controls
-          onNext={handleNext}
-          onRestart={restart}
-          disabled={remaining.length === 0}
-        />
+      <section>
+       <Controls
+         onNext={handleNext}
+         onRestart={restart}
+         disabled={remaining.length === 0}
+         continent={continent}
+         onContinentChange={handleContinentChange}
+       />
         {lastCountry && <CountryCard country={lastCountry} />}
-        <History countries={displayed} title="Países vistos" />
       </section>
       <h3>Países vistos: {displayed.length}</h3>
     </>

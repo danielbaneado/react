@@ -1,12 +1,18 @@
 export interface Country {
   name: string;
   flag: string;
+  area: number;
+  population: number;
+  continents: string[];
 }
 
 interface ApiCountry {
   names: { common: string };
   codes: { alpha_2: string };
   flag: { url_png: string };
+  area: { kilometers: number };
+  population: number;
+  continents: string[];
 }
 
 interface ApiResponse {
@@ -16,15 +22,11 @@ interface ApiResponse {
 const API_URL= "https://api.restcountries.com/countries/v5"
 const API_KEY= import.meta.env.VITE_RC_API_KEY as string
 
-export const MIDDLE_EAST_CODES = [
-  "BH", "EG", "IQ", "IR", "IL", "KW", "LB", "QA", "OM", "SA", "SY", "TR", "AE",
-]
-
 async function fetchPage(offset: number, signal?: AbortSignal): Promise<ApiCountry[]> {
   const params = new URLSearchParams({
     limit: "100",
     offset: String(offset),
-    response_fields: "names.common,codes.alpha_2,flag.url_png",
+    response_fields: "names.common,codes.alpha_2,flag.url_png,area.kilometers,population,continents",
   })
 
   const res = await fetch(`${API_URL}?${params}`, {
@@ -40,7 +42,7 @@ async function fetchPage(offset: number, signal?: AbortSignal): Promise<ApiCount
   return json.data.objects
 }
 
-export async function fetchMiddleEast(signal?: AbortSignal): Promise<Country[]> {
+export async function fetchCountries(signal?: AbortSignal, continent?: string): Promise<Country[]> {
   if (!API_KEY) {
     throw new Error("Falta VITE_RC_API_KEY en .env.local")
   }
@@ -51,6 +53,12 @@ export async function fetchMiddleEast(signal?: AbortSignal): Promise<Country[]> 
 
   return pages
     .flat()
-    .filter(c => MIDDLE_EAST_CODES.includes(c.codes.alpha_2))
-    .map(c => ({ name: c.names.common, flag: c.flag.url_png }))
+    .filter(c => !continent || c.continents.some(c => c.toLowerCase() === continent.toLowerCase()))
+    .map(c => ({ 
+      name: c.names.common, 
+      flag: c.flag.url_png, 
+      area: c.area.kilometers, 
+      population: c.population,
+      continents: c.continents,
+    }))
 }
