@@ -42,7 +42,7 @@ async function fetchPage(offset: number, signal?: AbortSignal): Promise<ApiCount
   return json.data.objects
 }
 
-export async function fetchCountries(signal?: AbortSignal, continent?: string): Promise<Country[]> {
+export async function fetchCountries(signal?: AbortSignal): Promise<Country[]> {
   if (!API_KEY) {
     throw new Error("Falta VITE_RC_API_KEY en .env.local")
   }
@@ -53,7 +53,6 @@ export async function fetchCountries(signal?: AbortSignal, continent?: string): 
 
   return pages
     .flat()
-    .filter(c => !continent || c.continents.some(c => c.toLowerCase() === continent.toLowerCase()))
     .map(c => ({ 
       name: c.names.common, 
       flag: c.flag.url_png, 
